@@ -1,0 +1,96 @@
+# OS and editor files
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*.tmp
+*.bak
+*.orig
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+
+# Environment files and secrets
+.env
+.env.*
+*.env
+*.env.local
+*.env.development
+*.env.production
+*.secret
+*.secrets
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Keep committed examples
+!.env.example
+!*.env.example
+!env/*.env.example
+
+# Logs
+*.log
+logs/
+log/
+
+# Docker and local runtime data
+docker-compose.override.yml
+compose.override.yml
+*.pid
+*.sock
+data/
+tmp/
+temp/
+runtime/
+
+# Database dumps and generated local data
+*.sql.gz
+*.dump
+*.dmp
+*.sqlite
+*.sqlite3
+mysql/data/
+redis/data/
+rabbitmq/data/
+
+# Node / frontend artifacts
+node_modules/
+dist/
+build/
+.vite/
+.next/
+.nuxt/
+coverage/
+
+# Java / Maven / Gradle artifacts
+target/
+.gradle/
+build/
+out/
+
+# Go artifacts
+bin/
+*.exe
+*.test
+*.prof
+coverage.out
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+.python-version
+.venv/
+venv/
+env/
+pip-wheel-metadata/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Do not ignore this repository's environment examples directory
+!env/
+!env/*.env.example
