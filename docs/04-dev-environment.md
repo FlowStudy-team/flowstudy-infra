@@ -127,7 +127,7 @@ git clone git@github.com:FlowStudy/flowstudy-infra.git
 
 ## 7. Docker Compose 基础设施启动
 
-`docker-compose.yml` 建议放在：
+`docker-compose.yml` 放在：
 
 ```text
 flowstudy-infra/docker-compose.yml
@@ -237,7 +237,7 @@ mvn spring-boot:run
 GET http://localhost:8080/api/v1/health
 ```
 
-推荐返回：
+返回：
 
 ```json
 {
@@ -322,7 +322,7 @@ GET http://localhost:9000/health
 Python 3.11+
 FastAPI
 Uvicorn
-LangChain / LangGraph
+LangGraph
 RabbitMQ Client
 LLM API
 SSE
@@ -395,7 +395,7 @@ GET http://localhost:8000/api/v1/health
 ### 11.1 技术栈
 
 ```text
-Vue 3 / React
+Vue 3
 TypeScript
 Vite
 pnpm

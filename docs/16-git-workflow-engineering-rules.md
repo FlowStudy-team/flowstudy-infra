@@ -161,28 +161,9 @@ docs: add database design and init SQL
 fix: correct submission status update
 ```
 
-## 8. PR 模板要求
+## 8. PR 模板
 
-每个 PR 必须说明：
-
-```text
-1. 变更说明
-2. 变更目的
-3. 关联 Issue
-4. 影响范围
-5. 具体改动
-6. 测试说明
-7. 测试截图或日志
-8. 风险与影响
-9. 回滚方案
-10. 自查清单
-```
-
-如果没有关联 Issue：
-
-```text
-Resolves N/A
-```
+见 .github/pull_request_template.md
 
 ## 9. Code Review 规则
 

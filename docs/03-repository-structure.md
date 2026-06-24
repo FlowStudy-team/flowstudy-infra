@@ -4,8 +4,6 @@
 
 FlowStudy 采用多仓库结构，将前端、核心业务服务、判题服务、AI 服务和基础设施文档分别管理。这样做的原因是各模块技术栈差异明显，职责边界清晰，开发节奏也不同。前端使用 JavaScript/TypeScript 技术栈，Core Service 使用 Java，Judge Service 使用 Go，AI Service 使用 Python。如果全部放在一个仓库中，依赖管理、构建方式、代码规范和 CI/CD 会混在一起，不利于团队协作。
 
-当前推荐保留四个业务仓库，再根据需要增加一个基础设施仓库。`.github` 是 GitHub 组织级配置仓库，不算业务服务仓库。
-
 ## 2. 推荐仓库列表
 
 ```text
@@ -18,13 +16,11 @@ FlowStudy Organization
 └── flowstudy-infra
 ```
 
-其中 `flowstudy-infra` 如果暂时不想新增，也可以先把文档和 docker-compose 放在 `flowstudy-core/docs` 中。但从长期维护角度看，基础设施、契约文档和部署脚本不属于任何单一业务服务，独立成仓库更清晰。
-
 ## 3. `.github` 仓库
 
 `.github` 是 GitHub 组织配置仓库，主要用于组织主页、Issue 模板、PR 模板、贡献指南、CODEOWNERS 和通用工作流说明。它不放业务代码，也不放数据库 SQL 或服务配置。
 
-推荐结构：
+目录结构：
 
 ```text
 .github/
@@ -48,7 +44,7 @@ FlowStudy Organization
 
 推荐职责包括：登录注册页面、文章列表页、章节阅读页、题目详情页、Monaco Editor 代码编辑器、代码提交、判题结果展示、AI 侧边栏、SSE 流式输出接入、学习行为埋点、个人中心和学习笔记页面。
 
-推荐目录结构：
+目录结构：
 
 ```text
 flowstudy-frontend/
@@ -234,7 +230,3 @@ flowstudy-infra/
 ## 11. README 约定
 
 每个仓库都必须有 README。README 至少包含项目职责、技术栈、本地启动方式、环境变量说明、依赖服务、常用命令和相关文档链接。业务细节不必全部写在 README 中，复杂设计应链接到 `flowstudy-infra/docs`。
-
-## 12. 当前建议
-
-当前你已经拆分出 `flowstudy-core`、`flowstudy-judge`、`flowstudy-ai` 和 `flowstudy-frontend`，这个方向是正确的。接下来建议新增 `flowstudy-infra` 仓库，用于放置本文档、后续的 API 契约、MQ 契约、数据库设计、docker-compose 和部署脚本。这样四个业务仓库可以保持干净，团队成员也能从一个统一入口找到所有工程规范。
