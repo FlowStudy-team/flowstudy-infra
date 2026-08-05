@@ -369,3 +369,17 @@ GitHub -> Pull Request -> Revert
 7. 没有提交敏感文件
 8. Reviewer 可以根据 PR 描述理解改动内容
 ```
+# 当前多 Agent 协作规则
+
+- 一个 Issue 对应一个明确任务，避免在同一任务中混入无关重构。
+- 不同 Agent 不应同时修改同一工作目录；需要并行时使用独立分支或独立 worktree。
+- Agent 不自动 merge、rebase、push 到受保护分支，也不替代人工发布审批。
+- Agent 不修改不属于当前 Issue 的内容；发现无关问题时记录到后续任务。
+- 跨服务契约变更必须先审查，包括 REST API、OpenAPI、RabbitMQ 消息、数据库 schema 和错误码。
+- API 变更必须同步 Core、Frontend、infra REST/OpenAPI 文档。
+- RabbitMQ 变更必须同步 Core 生产者、Judge 消费者和消息契约。
+- 数据库变更必须新增 migration，并说明备份和回滚原则。
+- Claude Code 适合做只读分析、审查、差异归纳和方案评估。
+- Codex 适合做实现、测试、文档更新和本地验证。
+- 人工负责最终合并、受保护分支 push、生产部署、回滚和密钥操作。
+- Agent 完成后必须报告修改文件、验证命令、验证结果、未验证事项和风险。

@@ -230,3 +230,27 @@ flowstudy-infra/
 ## 11. README 约定
 
 每个仓库都必须有 README。README 至少包含项目职责、技术栈、本地启动方式、环境变量说明、依赖服务、常用命令和相关文档链接。业务细节不必全部写在 README 中，复杂设计应链接到 `flowstudy-infra/docs`。
+# 当前代码核对补充
+
+> 本文件保留原有推荐结构说明。实际仓库结构、入口和差异请优先参考 [00-current-status.md](00-current-status.md) 和 [18-code-map.md](18-code-map.md)。以下“当前实际结构快照”基于 2026-08-03 的代码检查。
+
+| 仓库 | 当前技术栈 | 当前主要入口 | AGENTS.md | 关键目录 | 当前依赖关系 |
+|---|---|---|---|---|---|
+| `flowstudy-frontend` | Vue 3、Vite、TypeScript、Pinia | `flowstudy-web/src/main.ts` | `../flowstudy-frontend/AGENTS.md` | `flowstudy-web/src/api`、`src/views`、`src/components`、`src/store` | 调用 Core `/api/v1`；通过 `/ai` 代理调用 AI |
+| `flowstudy-core` | Spring Boot 3.4.1、Java 17、MyBatis、Spring Security、AMQP | `src/main/java/com/flowstudy/core/FlowstudyCoreApplication.java` | `../flowstudy-core/AGENTS.md` | `src/main/java/com/flowstudy/core/module`、`security`、`common` | 依赖 MySQL、RabbitMQ、JWT；当前未发现 Redis 实现 |
+| `flowstudy-judge` | C++17、CMake、rabbitmq-c、libmysqlclient、isolate | `src/main.cpp` | `../flowstudy-judge/AGENTS.md` | `src/mq`、`src/db`、`src/judge`、`src/worker`、`test` | 消费 RabbitMQ，直接写 MySQL |
+| `flowstudy-ai` | Python、FastAPI、OpenAI SDK | `app/main.py` | `../flowstudy-ai/AGENTS.md` | `app/router.py`、`app/llm_client.py`、`app/prompt.py` | 调用 DeepSeek/OpenAI-compatible API；当前未发现 DB/MQ/Core 客户端 |
+| `flowstudy-infra` | Markdown、SQL、Nginx | `README.md` | `AGENTS.md` | `docs`、`mysql`、`nginx`、`env` | 提供契约和文档；`docker-compose.yml` 为空 |
+
+当前仓库间调用关系：
+
+```text
+Frontend -> Core HTTP /api/v1
+Frontend -> AI HTTP/SSE /ai/api/v1/ai/chat
+Core -> RabbitMQ submission_queue
+Judge -> RabbitMQ submission_queue
+Judge -> MySQL fs_submission / fs_code_run
+Core -> MySQL 查询判题结果
+```
+
+当前未发现 Core 消费 Judge 结果 RabbitMQ 消息的代码；这与部分设计文档不同，已记录在 [00-current-status.md](00-current-status.md)。

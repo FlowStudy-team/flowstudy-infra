@@ -583,3 +583,93 @@ Docker Compose 配置变化
 ```
 
 所有开发者在修改本地环境规范时，必须通过 Pull Request 提交，并由至少一名相关模块负责人 Review。
+# 当前代码核对补充
+
+> `docker-compose.yml` 和 `env/*.env.example` 当前为空，不能按旧文档直接一键启动中间件。以下补充以实际仓库文件为准；旧命令如依赖空 compose，应视为待补齐。
+
+## 当前实际启动命令
+
+### Core
+
+路径：`../flowstudy-core`
+
+```bash
+./mvnw test
+./mvnw spring-boot:run
+```
+
+Windows PowerShell：
+
+```powershell
+.\mvnw.cmd test
+.\mvnw.cmd spring-boot:run
+```
+
+配置入口：`.env.example`、`src/main/resources/application.properties`。依赖 MySQL 和 RabbitMQ。
+
+### Frontend
+
+路径：`../flowstudy-frontend/flowstudy-web`
+
+```bash
+npm install
+npm run type-check
+npm run lint
+npm run build
+npm run dev
+```
+
+配置入口：`.env.example`，默认 `VITE_API_BASE_URL=/api/v1`。`vite.config.ts` 将 `/api` 代理到 `http://localhost:8080`，将 `/ai` 代理到 `http://localhost:8000`。
+
+### Judge
+
+路径：`../flowstudy-judge`
+
+```bash
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j$(nproc)
+./build/test/test_runner
+./build/src/judge_worker config.json
+```
+
+配置入口：`config.example.json`。依赖 Linux/WSL、RabbitMQ、MySQL、isolate。
+
+### AI
+
+路径：`../flowstudy-ai`
+
+```bash
+python -m venv .venv
+pip install -r requirements.txt
+python -m compileall app
+python -m uvicorn app.main:app --reload --port 8000
+```
+
+配置入口：`.env.example`。需要 `DEEPSEEK_API_KEY` 才能真实调用模型。
+
+### Docker Compose
+
+路径：`flowstudy-infra/docker-compose.yml` 当前为空。以下命令只有在 compose 文件补齐后才可作为验证命令：
+
+```bash
+docker compose config
+docker compose up -d
+docker compose ps
+```
+
+### 推荐本地启动顺序
+
+1. MySQL
+2. RabbitMQ
+3. Core
+4. Judge
+5. AI
+6. Frontend
+7. 可选 Nginx
+
+### 常见问题
+
+- OpenAPI 当前部分路径为 `/api/...` 或 `/api/oj/...`，实际 Core 主路径为 `/api/v1/...`。
+- Nginx 配置 `../flowstudy-infra/nginx/nginx.conf` 使用本机 Windows 绝对路径，跨机器需修改。
+- Core 文档提到 Redis 限流，但当前代码未发现 Redis 实现。
+- Judge 需要 isolate 权限；Windows 原生环境不适合直接运行 Judge。
