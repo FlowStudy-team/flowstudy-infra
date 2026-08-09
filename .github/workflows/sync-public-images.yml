@@ -1,0 +1,41 @@
+name: Sync Public Images
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 20 * * 0"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - source: nginx:1.27-alpine
+            target: nginx:1.27-alpine
+          - source: mysql:8.4
+            target: mysql:8.4
+          - source: redis:7-alpine
+            target: redis:7-alpine
+          - source: rabbitmq:3.13-management-alpine
+            target: rabbitmq:3.13-management-alpine
+
+    steps:
+      - name: Login to SWR
+        run: |
+          echo "${{ secrets.SWR_PASSWORD }}" | docker login "${{ secrets.SWR_REGISTRY }}" -u "${{ secrets.SWR_USERNAME }}" --password-stdin
+
+      - name: Pull public image
+        run: |
+          docker pull "${{ matrix.image.source }}"
+
+      - name: Push image to SWR
+        run: |
+          registry="${{ secrets.SWR_REGISTRY }}"
+          namespace="${{ secrets.SWR_NAMESPACE }}"
+          target="${registry}/${namespace}/${{ matrix.image.target }}"
+          docker tag "${{ matrix.image.source }}" "$target"
+          docker push "$target"
+

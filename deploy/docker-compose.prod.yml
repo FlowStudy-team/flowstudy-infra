@@ -2,7 +2,7 @@ name: flowstudy
 
 services:
   nginx:
-    image: nginx:1.27-alpine
+    image: ${SWR_REGISTRY}/${SWR_NAMESPACE}/nginx:1.27-alpine
     container_name: flowstudy-nginx
     restart: unless-stopped
     depends_on:
@@ -58,7 +58,7 @@ services:
       - flowstudy-net
 
   mysql:
-    image: mysql:8.4
+    image: ${SWR_REGISTRY}/${SWR_NAMESPACE}/mysql:8.4
     container_name: flowstudy-mysql
     restart: unless-stopped
     environment:
@@ -84,7 +84,7 @@ services:
       - flowstudy-net
 
   redis:
-    image: redis:7-alpine
+    image: ${SWR_REGISTRY}/${SWR_NAMESPACE}/redis:7-alpine
     container_name: flowstudy-redis
     restart: unless-stopped
     command: ["sh", "-c", "redis-server --appendonly yes --requirepass \"$${REDIS_PASSWORD}\""]
@@ -101,7 +101,7 @@ services:
       - flowstudy-net
 
   rabbitmq:
-    image: rabbitmq:3.13-management-alpine
+    image: ${SWR_REGISTRY}/${SWR_NAMESPACE}/rabbitmq:3.13-management-alpine
     container_name: flowstudy-rabbitmq
     restart: unless-stopped
     environment:

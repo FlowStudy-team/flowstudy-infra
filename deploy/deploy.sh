@@ -66,7 +66,7 @@ chmod 600 "$DEPLOY_PATH/judge/config.json"
 
 echo "Deploying FlowStudy with image tags: web=$WEB_IMAGE_TAG server=$SERVER_IMAGE_TAG judge=$JUDGE_IMAGE_TAG opencode=$OPENCODE_IMAGE_TAG"
 
-docker compose -f docker-compose.prod.yml pull web server judge opencode-fixed
+docker compose -f docker-compose.prod.yml pull nginx web server mysql redis rabbitmq judge opencode-fixed
 docker compose -f docker-compose.prod.yml up -d
 docker compose -f docker-compose.prod.yml ps
 
