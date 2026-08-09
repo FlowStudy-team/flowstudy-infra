@@ -450,3 +450,37 @@ MYSQL_HOST=mysql
 4. Judge 服务不要暴露公网
 5. LLM API Key 必须通过环境变量注入
 ```
+# 当前代码核对补充
+
+> `flowstudy-infra/docker-compose.yml` 当前是空文件，`env/*.env.example` 为空，`deploy/`、`rabbitmq/`、`scripts/` 为空目录。因此本文原有 Docker Compose 服务清单只能作为规划参考，不能代表当前已可部署能力。当前真实限制见 [00-current-status.md](00-current-status.md) 和 [production/01-deployment-runbook.md](production/01-deployment-runbook.md)。
+
+## 当前部署配置核对
+
+| 项目 | 当前状态 | 证据 |
+|---|---|---|
+| 服务列表 | 未实现 | `docker-compose.yml` 为空 |
+| 端口 | 文档有规划，compose 未定义 | `docker-compose.yml` 为空 |
+| 网络 | 未实现 | `docker-compose.yml` 为空 |
+| volumes | 未实现 | `docker-compose.yml` 为空 |
+| depends_on | 未实现 | `docker-compose.yml` 为空 |
+| healthcheck | 未实现 | `docker-compose.yml` 为空 |
+| 环境变量 | infra 模板为空；业务仓库有局部示例 | `env/*.env.example` 为空，Core `.env.example`、Frontend `.env.example`、Judge `config.example.json`、AI `.env.example` |
+| 数据持久化 | 未实现 | 未定义 volumes |
+| Nginx | 部分实现 | `nginx/nginx.conf` 指向 Windows 本机路径和 Core 8080 |
+| 数据初始化 | 部分实现 | `mysql/init/01-init.sql`、`02-seed-algorithm-leetcode-style.sql` |
+
+## 当前可执行的部署相关验证
+
+```bash
+docker compose config
+```
+
+预期：当前会因为 compose 为空而不能作为完整部署验证通过。补齐 compose 前不要执行生产部署。
+
+## 当前部署限制
+
+- 没有 Dockerfile 或镜像构建定义。
+- 没有统一 env 模板。
+- 没有持久化卷、备份、健康检查和回滚脚本。
+- Judge 生产沙箱隔离、权限和资源限制未在 compose 中定义。
+- HTTPS、证书、域名和公网暴露策略未定义。

@@ -457,3 +457,42 @@ FlowStudy V1 至少满足：
 9. 接口统一返回 Result<T>
 10. 错误响应包含 traceId
 ```
+# 当前测试状态核对
+
+> 以下为 2026-08-03 检查到的实际测试状态。原文后续内容可作为计划参考；上线判断以当前实际测试和验证结果为准。
+
+## 当前已有测试与命令
+
+| 仓库 | 已实现 | 命令 | 状态 |
+|---|---|---|---|
+| `flowstudy-core` | Spring Boot + MockMvc + H2 集成测试，覆盖 auth/tutorial/problem/submission | `./mvnw test` 或 `.\mvnw.cmd test` | 已实现，本次需运行验证 |
+| `flowstudy-judge` | CMake `test_runner`，覆盖状态、消息解析、输出比对、配置；另有 `sandbox_test` 和 publisher | `cmake -B build -DCMAKE_BUILD_TYPE=Release`、`cmake --build build -j$(nproc)`、`./build/test/test_runner` | 已实现，依赖 Linux 工具链 |
+| `flowstudy-frontend` | 未发现单元测试/E2E；有 `type-check`、`lint`、`build` | `npm run type-check`、`npm run lint`、`npm run build` | 测试缺失，静态验证可执行 |
+| `flowstudy-ai` | 未发现测试目录 | `python -m compileall app` | 测试缺失，仅语法验证 |
+| `flowstudy-infra` | 未发现测试工具 | Markdown 链接/路径检查、`git diff --check` | 需要一次性脚本验证 |
+
+## 缺失测试
+
+- REST 契约测试：计划中。
+- OpenAPI 与 Controller 路径一致性测试：尚未实现。
+- RabbitMQ 可靠性测试：尚未实现；Judge 端有 publisher 脚本但需真实 MQ/DB。
+- 数据库迁移测试：尚未实现。
+- Judge 安全测试：部分手工/文档记录，生产环境未验证。
+- Frontend E2E：尚未实现。
+- AI SSE 和模型失败降级测试：尚未实现。
+- Docker Compose 启动测试：未完成，因为 compose 为空。
+- 性能测试和上线验证测试：尚未实现，见 [production/05-performance-test-plan.md](production/05-performance-test-plan.md)。
+
+## 建议上线前验证矩阵
+
+| 类型 | 状态 | 最小要求 |
+|---|---|---|
+| 单元测试 | 部分实现 | Core/Judge 全部通过，AI/Frontend 补基础测试 |
+| 集成测试 | 部分实现 | Core H2、Judge 模块测试、真实 MySQL/RabbitMQ 联调 |
+| 契约测试 | 尚未实现 | OpenAPI 路径、响应字段、错误码一致 |
+| 端到端测试 | 尚未实现 | 注册登录、教程、题目、运行、提交、结果、AI |
+| Judge 安全测试 | 部分实现 | isolate 权限、超时、内存、临时文件清理 |
+| RabbitMQ 可靠性测试 | 尚未实现 | ACK/NACK、重复消费、堆积恢复 |
+| 数据库迁移测试 | 尚未实现 | 空库初始化、现有库迁移、备份恢复 |
+| 性能测试 | 尚未实现 | 登录、查询、提交、判题并发、AI SSE |
+| 上线验证测试 | 尚未实现 | smoke test 和回滚演练 |
