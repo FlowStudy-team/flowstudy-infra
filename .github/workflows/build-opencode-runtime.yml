@@ -1,0 +1,41 @@
+name: Build OpenCode Runtime Image
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: flowstudy-runtime-node20-opencode
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build image
+        run: |
+          docker build -t "${IMAGE_NAME}:${GITHUB_SHA}" deploy/opencode-runtime
+
+      - name: Login to SWR
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "${{ secrets.SWR_PASSWORD }}" | docker login "${{ secrets.SWR_REGISTRY }}" -u "${{ secrets.SWR_USERNAME }}" --password-stdin
+
+      - name: Push image
+        if: github.event_name != 'pull_request'
+        run: |
+          registry="${{ secrets.SWR_REGISTRY }}"
+          namespace="${{ secrets.SWR_NAMESPACE }}"
+          docker tag "${IMAGE_NAME}:${GITHUB_SHA}" "${registry}/${namespace}/${IMAGE_NAME}:${GITHUB_SHA}"
+          docker tag "${IMAGE_NAME}:${GITHUB_SHA}" "${registry}/${namespace}/${IMAGE_NAME}:latest"
+          docker push "${registry}/${namespace}/${IMAGE_NAME}:${GITHUB_SHA}"
+          docker push "${registry}/${namespace}/${IMAGE_NAME}:latest"
+
