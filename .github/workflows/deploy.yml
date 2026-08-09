@@ -1,0 +1,117 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Fallback image tag for all services"
+        required: false
+        default: ""
+      web_image_tag:
+        description: "flowstudy-web image tag"
+        required: false
+        default: ""
+      server_image_tag:
+        description: "flowstudy-server image tag"
+        required: false
+        default: ""
+      judge_image_tag:
+        description: "flowstudy-judge image tag"
+        required: false
+        default: ""
+      opencode_image_tag:
+        description: "flowstudy-runtime-node20-opencode image tag"
+        required: false
+        default: ""
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      SWR_REGISTRY: ${{ secrets.SWR_REGISTRY }}
+      SWR_NAMESPACE: ${{ secrets.SWR_NAMESPACE }}
+      ECS_HOST: ${{ secrets.ECS_HOST }}
+      ECS_USER: ${{ secrets.ECS_USER }}
+      ECS_DEPLOY_PATH: ${{ secrets.ECS_DEPLOY_PATH }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve image tags
+        id: tags
+        shell: bash
+        run: |
+          fallback="${{ github.event.inputs.image_tag || '' }}"
+          if [ -z "$fallback" ]; then
+            fallback="${GITHUB_SHA}"
+          fi
+
+          web="${{ github.event.inputs.web_image_tag || '' }}"
+          server="${{ github.event.inputs.server_image_tag || '' }}"
+          judge="${{ github.event.inputs.judge_image_tag || '' }}"
+          opencode="${{ github.event.inputs.opencode_image_tag || '' }}"
+
+          echo "image_tag=$fallback" >> "$GITHUB_OUTPUT"
+          echo "web_image_tag=${web:-$fallback}" >> "$GITHUB_OUTPUT"
+          echo "server_image_tag=${server:-$fallback}" >> "$GITHUB_OUTPUT"
+          echo "judge_image_tag=${judge:-$fallback}" >> "$GITHUB_OUTPUT"
+          echo "opencode_image_tag=${opencode:-$fallback}" >> "$GITHUB_OUTPUT"
+
+      - name: Validate deployment template
+        run: |
+          docker compose --project-directory . --env-file deploy/env.example -f deploy/docker-compose.prod.yml config >/tmp/flowstudy-compose.yml
+          bash -n deploy/deploy.sh
+
+      - name: Login to SWR in runner
+        run: |
+          echo "${{ secrets.SWR_PASSWORD }}" | docker login "${SWR_REGISTRY}" -u "${{ secrets.SWR_USERNAME }}" --password-stdin
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.ECS_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "${ECS_HOST}" >> ~/.ssh/known_hosts
+
+      - name: Package deployment files
+        shell: bash
+        run: |
+          rm -rf /tmp/flowstudy-deploy-package
+          mkdir -p /tmp/flowstudy-deploy-package/nginx
+          mkdir -p /tmp/flowstudy-deploy-package/mysql
+          cp deploy/docker-compose.prod.yml /tmp/flowstudy-deploy-package/docker-compose.prod.yml
+          cp deploy/deploy.sh /tmp/flowstudy-deploy-package/deploy.sh
+          cp deploy/env.example /tmp/flowstudy-deploy-package/env.example
+          cp deploy/nginx/flowstudy.conf /tmp/flowstudy-deploy-package/nginx/flowstudy.conf
+          cp -R mysql/init /tmp/flowstudy-deploy-package/mysql/init
+          tar -czf /tmp/flowstudy-deploy-package.tgz -C /tmp/flowstudy-deploy-package .
+
+      - name: Sync files to ECS
+        shell: bash
+        run: |
+          ssh "${ECS_USER}@${ECS_HOST}" "mkdir -p '${ECS_DEPLOY_PATH}'"
+          cat /tmp/flowstudy-deploy-package.tgz | ssh "${ECS_USER}@${ECS_HOST}" "tar -xzf - -C '${ECS_DEPLOY_PATH}' && chmod +x '${ECS_DEPLOY_PATH}/deploy.sh'"
+          ssh "${ECS_USER}@${ECS_HOST}" "if [ ! -f '${ECS_DEPLOY_PATH}/.env' ]; then cp '${ECS_DEPLOY_PATH}/env.example' '${ECS_DEPLOY_PATH}/.env'; chmod 600 '${ECS_DEPLOY_PATH}/.env'; echo 'Created ${ECS_DEPLOY_PATH}/.env from template. Fill real secrets before rerun.'; exit 2; fi"
+
+      - name: Deploy on ECS
+        shell: bash
+        run: |
+          printf '%s' '${{ secrets.SWR_PASSWORD }}' | ssh "${ECS_USER}@${ECS_HOST}" "\
+            cd '${ECS_DEPLOY_PATH}' && \
+            docker login '${SWR_REGISTRY}' -u '${{ secrets.SWR_USERNAME }}' --password-stdin >/dev/null 2>&1 && \
+            WEB_IMAGE_TAG='${{ steps.tags.outputs.web_image_tag }}' \
+            SERVER_IMAGE_TAG='${{ steps.tags.outputs.server_image_tag }}' \
+            JUDGE_IMAGE_TAG='${{ steps.tags.outputs.judge_image_tag }}' \
+            OPENCODE_IMAGE_TAG='${{ steps.tags.outputs.opencode_image_tag }}' \
+            ECS_DEPLOY_PATH='${ECS_DEPLOY_PATH}' \
+            ./deploy.sh '${{ steps.tags.outputs.image_tag }}'"
+
+      - name: Smoke test from runner
+        run: |
+          curl -fsS --max-time 10 "http://${ECS_HOST}/api/health"

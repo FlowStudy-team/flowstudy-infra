@@ -13,7 +13,7 @@
 - 数据库：[docs/07-database-design.md](docs/07-database-design.md)、[mysql/init/01-init.sql](mysql/init/01-init.sql)、[mysql/migration/](mysql/migration/)
 - RabbitMQ：[docs/08-rabbitmq-message-contract.md](docs/08-rabbitmq-message-contract.md)
 - 测试：[docs/17-test-plan.md](docs/17-test-plan.md)
-- 部署：[docs/15-deployment-docker-compose.md](docs/15-deployment-docker-compose.md)、[docs/production/01-deployment-runbook.md](docs/production/01-deployment-runbook.md)
+- 部署：[docs/deployment/ecs-cicd.md](docs/deployment/ecs-cicd.md)、[docs/15-deployment-docker-compose.md](docs/15-deployment-docker-compose.md)、[docs/production/01-deployment-runbook.md](docs/production/01-deployment-runbook.md)
 
 ## For AI Agents
 
@@ -61,6 +61,7 @@
 | [docs/13-auth-security-rate-limit.md](docs/13-auth-security-rate-limit.md) | 鉴权、安全和限流设计 |
 | [docs/14-observability-logging-tracing.md](docs/14-observability-logging-tracing.md) | 日志、追踪和可观测性规划 |
 | [docs/15-deployment-docker-compose.md](docs/15-deployment-docker-compose.md) | Docker Compose 部署文档和当前限制 |
+| [docs/deployment/ecs-cicd.md](docs/deployment/ecs-cicd.md) | ECS + SWR + GitHub Actions 单机自动化部署方案 |
 | [docs/16-git-workflow-engineering-rules.md](docs/16-git-workflow-engineering-rules.md) | Git 流程、工程规则和多 Agent 协作 |
 | [docs/17-test-plan.md](docs/17-test-plan.md) | 测试计划和当前测试状态 |
 | [docs/18-code-map.md](docs/18-code-map.md) | 设计文档与真实代码映射 |
@@ -75,9 +76,10 @@
 
 ## Current Infrastructure Reality
 
-- `docker-compose.yml` 当前为空，不能直接启动完整环境。
-- `env/*.env.example` 当前为空，不能作为真实部署模板。
-- `deploy/`、`diagrams/`、`rabbitmq/`、`scripts/` 当前为空目录。
+- `docker-compose.yml` 当前为空，不能直接启动本地完整环境。
+- 生产单机部署模板位于 `deploy/`，详见 [docs/deployment/ecs-cicd.md](docs/deployment/ecs-cicd.md)。
+- `env/*.env.example` 当前为空；生产部署使用 [deploy/env.example](deploy/env.example)。
+- `diagrams/`、`rabbitmq/`、`scripts/` 当前为空目录。
 - `nginx/nginx.conf` 是本机 Windows 路径配置，生产环境不可直接复用。
 
 以上限制已记录在 [docs/00-current-status.md](docs/00-current-status.md) 和 [docs/production/06-known-risks.md](docs/production/06-known-risks.md)。

@@ -1,0 +1,153 @@
+name: flowstudy
+
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: flowstudy-nginx
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_started
+      server:
+        condition: service_started
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/flowstudy.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - flowstudy-net
+
+  web:
+    image: ${SWR_REGISTRY}/${SWR_NAMESPACE}/flowstudy-web:${WEB_IMAGE_TAG}
+    container_name: flowstudy-web
+    restart: unless-stopped
+    networks:
+      - flowstudy-net
+
+  server:
+    image: ${SWR_REGISTRY}/${SWR_NAMESPACE}/flowstudy-server:${SERVER_IMAGE_TAG}
+    container_name: flowstudy-server
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      DB_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8&allowPublicKeyRetrieval=true
+      DB_USERNAME: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS}
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/}
+      JUDGE_SUBMISSION_QUEUE: ${RABBITMQ_QUEUE:-submission_queue}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRE_SECONDS: ${JWT_EXPIRE_SECONDS:-7200}
+      OPENCODE_BASE_URL: http://opencode-fixed:4096
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    expose:
+      - "8080"
+    networks:
+      - flowstudy-net
+
+  mysql:
+    image: mysql:8.4
+    container_name: flowstudy-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+08:00
+    volumes:
+      - flowstudy-mysql-data:/var/lib/mysql
+      - ./mysql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u$${MYSQL_USER} -p$${MYSQL_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    networks:
+      - flowstudy-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: flowstudy-redis
+    restart: unless-stopped
+    command: ["sh", "-c", "redis-server --appendonly yes --requirepass \"$${REDIS_PASSWORD}\""]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    volumes:
+      - flowstudy-redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks:
+      - flowstudy-net
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: flowstudy-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-/}
+    volumes:
+      - flowstudy-rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - flowstudy-net
+
+  judge:
+    image: ${SWR_REGISTRY}/${SWR_NAMESPACE}/flowstudy-judge:${JUDGE_IMAGE_TAG}
+    container_name: flowstudy-judge
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - ./judge/config.json:/app/config.json:ro
+    privileged: true
+    networks:
+      - flowstudy-net
+
+  opencode-fixed:
+    image: ${SWR_REGISTRY}/${SWR_NAMESPACE}/flowstudy-runtime-node20-opencode:${OPENCODE_IMAGE_TAG}
+    container_name: flowstudy-opencode-fixed
+    restart: unless-stopped
+    expose:
+      - "4096"
+    networks:
+      - flowstudy-net
+
+volumes:
+  flowstudy-mysql-data:
+  flowstudy-redis-data:
+  flowstudy-rabbitmq-data:
+
+networks:
+  flowstudy-net:
+    name: flowstudy-net
