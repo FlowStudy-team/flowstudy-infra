@@ -89,7 +89,7 @@ jobs:
           cp deploy/deploy.sh /tmp/flowstudy-deploy-package/deploy.sh
           cp deploy/env.example /tmp/flowstudy-deploy-package/env.example
           cp deploy/nginx/flowstudy.conf /tmp/flowstudy-deploy-package/nginx/flowstudy.conf
-          cp -R mysql/init /tmp/flowstudy-deploy-package/mysql/init
+          cp -R mysql/init/. /tmp/flowstudy-deploy-package/mysql/init/
           tar -czf /tmp/flowstudy-deploy-package.tgz -C /tmp/flowstudy-deploy-package .
 
       - name: Sync files to ECS
