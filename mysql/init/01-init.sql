@@ -478,7 +478,57 @@ INSERT IGNORE INTO fs_code_template (
     (1, 'python', '# TODO: write your code here\n', NULL, 0);
 
 -- =========================================================
--- 17. Membership, coupon and token quota tables
+-- 17. Document center tables
+-- =========================================================
+CREATE TABLE IF NOT EXISTS fs_document_category (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(64) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    UNIQUE KEY uk_fs_document_category_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO fs_document_category (id, name) VALUES
+    (1, '算法笔记'),
+    (2, '后端开发'),
+    (3, '前端开发');
+
+CREATE TABLE IF NOT EXISTS fs_document_folder (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
+    name VARCHAR(128) NOT NULL,
+    parent_id BIGINT DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    KEY idx_fs_document_folder_user_id (user_id),
+    KEY idx_fs_document_folder_parent_id (parent_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS fs_document (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    content MEDIUMTEXT,
+    summary VARCHAR(512) DEFAULT NULL,
+    folder_id BIGINT DEFAULT NULL,
+    category_id BIGINT DEFAULT NULL,
+    tags VARCHAR(512) DEFAULT NULL,
+    status VARCHAR(32) NOT NULL DEFAULT 'draft',
+    published_at DATETIME DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    KEY idx_fs_document_user_id (user_id),
+    KEY idx_fs_document_folder_id (folder_id),
+    KEY idx_fs_document_category_id (category_id),
+    KEY idx_fs_document_status (status),
+    KEY idx_fs_document_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =========================================================
+-- 18. Membership, coupon and token quota tables
 -- =========================================================
 CREATE TABLE IF NOT EXISTS fs_membership_product (
     id BIGINT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(128) NOT NULL,
