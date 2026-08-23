@@ -549,4 +549,8 @@ MYSQL_HOST=mysql
 3. 先做确定性的 Context Engine 和 Tool System，再做复杂 Agent
 4. 学习行为和笔记生成必须异步化
 ```
+### AI 笔记任务执行器落地说明
 
+AI 服务当前支持两种执行模式：`local` 用于本地联调，使用 SQLite 保存任务状态；`rabbitmq` 用于部署环境，使用 durable queue `fs.ai.note.queue`，routing key 为队列名，消息事件为 `ai.note.generate.requested`。消息包含 `schemaVersion`、`eventType`、`taskId`、`context` 和用户 Bearer Token。Token 仅用于 AI worker 将生成结果回写当前用户的 Core 学习笔记接口，不应输出到日志。
+
+RabbitMQ 模式要求 `RABBITMQ_URL`、`AI_NOTE_QUEUE`、`AI_TASK_DB_PATH` 配置，并将 SQLite 文件放到持久化卷；消费者失败会重新入队，任务状态会记录为 `FAILED`，生产环境仍应配合 RabbitMQ DLQ 和监控。
