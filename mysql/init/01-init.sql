@@ -54,6 +54,24 @@ CREATE TABLE IF NOT EXISTS sys_user (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
 
 -- =========================================================
+-- 1.1. Admin audit log
+-- =========================================================
+CREATE TABLE IF NOT EXISTS fs_admin_audit_log (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    admin_id BIGINT NOT NULL,
+    module VARCHAR(32) NOT NULL,
+    action VARCHAR(64) NOT NULL,
+    target_type VARCHAR(32) DEFAULT NULL,
+    target_id BIGINT DEFAULT NULL,
+    request_summary VARCHAR(1024) DEFAULT NULL,
+    result VARCHAR(16) NOT NULL DEFAULT 'SUCCESS',
+    trace_id VARCHAR(64) DEFAULT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_fs_admin_audit_admin (admin_id, created_at),
+    KEY idx_fs_admin_audit_target (target_type, target_id),
+    KEY idx_fs_admin_audit_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='FlowStudy admin audit log';
+
 -- 2. Tutorial table
 -- =========================================================
 CREATE TABLE IF NOT EXISTS fs_tutorial (
