@@ -6,7 +6,7 @@ FlowStudy 的 AI 模块目标不是做一个孤立聊天框，而是围绕用户
 
 当前 `flowstudy-ai` 已有 FastAPI、健康检查、SSE 聊天接口、Prompt 构造和 DeepSeek/OpenAI-compatible 流式调用基础。后续接入应分阶段推进，先完成上下文问答闭环，再做 RAG、行为分析和 Agent 工作流。
 
-参考 `ByteSibyl` 的实现经验，AI 模块应重点吸收以下设计：
+参考同类 Agent 系统的实现经验，AI 模块应重点吸收以下设计：
 
 ```text
 1. Agent Core 不依赖 Web UI
@@ -112,7 +112,7 @@ MVP 可以先用 MySQL 存储分块和关键词检索，后续再接向量数据
 4. 支持失败降级和局部重试
 ```
 
-该阶段再参考 ByteSibyl 的 Agent Loop、Tool System、Trace 和 Eval，不建议一开始就引入复杂多 Agent。
+该阶段再参考成熟 Agent 系统的 Agent Loop、Tool System、Trace 和 Eval，不建议一开始就引入复杂多 Agent。
 
 ## 4. Core Internal API 设计
 
@@ -242,7 +242,7 @@ error
 
 ## 6. Context Engine 设计
 
-参考 ByteSibyl 的 Context Engine，FlowStudy AI 不应把所有内容无脑塞进 Prompt，而要构造可解释的上下文包。
+参考成熟 Context Engine 的设计，FlowStudy AI 不应把所有内容无脑塞进 Prompt，而要构造可解释的上下文包。
 
 上下文分层：
 
@@ -408,7 +408,7 @@ RoutingKey: ai.profile.update.requested
 
 ## 10. Agent 工作流设计
 
-参考 ByteSibyl，不建议一开始做复杂多 Agent。先做单 Agent workflow：
+参考成熟 Agent 系统，不建议一开始做复杂多 Agent。先做单 Agent workflow：
 
 ```text
 Start
@@ -445,7 +445,7 @@ GENERAL_CHAT        普通学习问答
 
 ## 11. Trace 与 Eval
 
-参考 ByteSibyl 的 Trace/Evaluation 思路，AI 模块从早期就要记录可复盘信息。
+参考成熟 Trace/Evaluation 思路，AI 模块从早期就要记录可复盘信息。
 
 Trace 建议字段：
 
