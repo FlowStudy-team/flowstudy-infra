@@ -74,10 +74,19 @@ jobs:
       - name: Prepare SSH
         shell: bash
         run: |
+          host="$(printf '%s' "$ECS_HOST" | tr -d '\r\n' | xargs)"
+          if [[ ! "$host" =~ ^[A-Za-z0-9.-]+$ ]]; then
+            echo "ECS_HOST must contain only an IP address or hostname, without scheme, port, or whitespace." >&2
+            exit 1
+          fi
+          echo "ECS_HOST=$host" >> "$GITHUB_ENV"
           install -m 700 -d ~/.ssh
           printf '%s\n' "${{ secrets.ECS_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "${ECS_HOST}" >> ~/.ssh/known_hosts
+          if ! ssh-keyscan -T 30 -p 22 -H "$host" >> ~/.ssh/known_hosts; then
+            echo "Unable to read the SSH host key from ECS_HOST on TCP port 22." >&2
+            exit 1
+          fi
 
       - name: Package deployment files
         shell: bash
