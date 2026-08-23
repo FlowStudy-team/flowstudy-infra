@@ -335,4 +335,29 @@ RoutingKey: ai.note.generate
 7. 行为消息可以被消费
 8. AI 不直接访问 Core 数据库
 9. LLM API Key 只从环境变量读取
+
+## 13. 当前实现：会话持久化第一阶段
+
+当前版本已开始接入 Core-owned AI conversation persistence：
+
+```text
+Frontend 携带 Bearer Token 调用 AI SSE
+  -> AI 创建或读取 conversationId
+  -> AI 通过 Core /api/v1/ai/conversations/{id}/messages 读取历史
+  -> AI 调用模型并流式返回
+  -> AI 将 user/assistant 消息写回 Core
+```
+
+新增 Core 接口：
+
+```http
+GET  /api/v1/ai/conversations
+POST /api/v1/ai/conversations
+GET  /api/v1/ai/conversations/{conversationId}/messages
+POST /api/v1/ai/conversations/{conversationId}/messages
+```
+
+这些接口要求登录用户身份，Core 根据 `userId` 校验会话归属。AI 服务暂时将 Core 不可用视为可降级故障，聊天仍可继续，但不会形成持久化历史。完整的会话列表切换、消息幂等、删除/归档和审计字段仍待后续补齐。
+
+AI 生成笔记成功后，若请求携带用户 Bearer Token，AI 会调用 Core 的 `POST /api/v1/learning/notes`，将生成结果写入 `fs_learning_note`。当前任务执行器仍是 AI 进程内的本地适配器，服务重启会丢失任务状态；RabbitMQ 任务化和独立的笔记生成前端入口仍属于后续工作。
 ```
