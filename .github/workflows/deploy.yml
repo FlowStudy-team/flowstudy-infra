@@ -48,7 +48,10 @@ jobs:
         run: |
           fallback="${{ github.event.inputs.image_tag || '' }}"
           if [ -z "$fallback" ]; then
-            fallback="${GITHUB_SHA}"
+            # Application images are built in separate repositories, so their
+            # commit SHA is not the infra repository SHA. Use the shared
+            # latest tag unless a release tag is supplied explicitly.
+            fallback="latest"
           fi
 
           web="${{ github.event.inputs.web_image_tag || '' }}"
