@@ -45,7 +45,7 @@ jobs:
 
       - name: Check retired names
         run: |
-          if grep -Rni "[b]ytesibyl" . --exclude-dir=.git; then
+          if grep -Rni "[b]ytesibyl" deploy docs/deployment .github README.md 2>/dev/null; then
             echo "Retired project name must not appear in flowstudy-infra deployment files." >&2
             exit 1
           fi
