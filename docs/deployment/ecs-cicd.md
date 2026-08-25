@@ -125,11 +125,27 @@ RABBITMQ_DEFAULT_PASS=replace-with-real-rabbitmq-password
 RABBITMQ_VHOST=/
 RABBITMQ_QUEUE=submission_queue
 
-JWT_SECRET=replace-with-a-long-random-secret-at-least-32-bytes
-JWT_EXPIRE_SECONDS=7200
+JWT_PRIVATE_KEY=replace-with-base64-encoded-rsa-private-key
+JWT_PUBLIC_KEY=replace-with-base64-encoded-rsa-public-key
+JWT_ACCESS_EXPIRE_SECONDS=900
+JWT_REFRESH_EXPIRE_SECONDS=2592000
+JWT_ALLOW_EPHEMERAL=false
+AUTH_COOKIE_SECURE=true
+AUTH_COOKIE_SAME_SITE=Lax
 ```
 
 不要把真实 `.env`、密码、token、私钥提交到 Git。
+
+生成 RSA 密钥并写入 ECS `.env` 前，可执行：
+
+```bash
+openssl genrsa -out jwt-private.pem 2048
+openssl rsa -in jwt-private.pem -pubout -out jwt-public.pem
+base64 -w 0 jwt-private.pem
+base64 -w 0 jwt-public.pem
+```
+
+将两段 Base64 内容分别填入 `JWT_PRIVATE_KEY` 和 `JWT_PUBLIC_KEY`。生产环境必须配置真实密钥，不能启用 `JWT_ALLOW_EPHEMERAL`。
 
 ## 5. SWR 镜像约定
 
