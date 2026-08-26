@@ -1,0 +1,112 @@
+name: Elasticsearch Pagination Benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      document_count:
+        description: "Number of deterministic documents"
+        required: false
+        default: "1000000"
+      depths:
+        description: "Comma-separated offsets"
+        required: false
+        default: "0,1000,10000,50000,100000"
+      page_sizes:
+        description: "Comma-separated page sizes"
+        required: false
+        default: "20,50,100"
+      concurrency:
+        description: "Comma-separated concurrency levels"
+        required: false
+        default: "1,4,16"
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    env:
+      ECS_HOST: ${{ secrets.ECS_HOST }}
+      ECS_USER: ${{ secrets.ECS_USER }}
+      ECS_DEPLOY_PATH: ${{ secrets.ECS_DEPLOY_PATH }}
+      REMOTE_TEST_PATH: ${{ secrets.ECS_DEPLOY_PATH }}/tests/performance/elasticsearch
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          host="$(printf '%s' "$ECS_HOST" | tr -d '\r\n' | xargs)"
+          if [[ ! "$host" =~ ^[A-Za-z0-9.-]+$ ]]; then
+            echo "ECS_HOST must contain only an IP address or hostname." >&2
+            exit 1
+          fi
+          echo "ECS_HOST=$host" >> "$GITHUB_ENV"
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.ECS_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -T 30 -p 22 -H "$host" >> ~/.ssh/known_hosts
+
+      - name: Upload benchmark files
+        shell: bash
+        run: |
+          SSH_OPTS=(-i ~/.ssh/id_rsa -o IdentitiesOnly=yes -o BatchMode=yes)
+          tar -czf /tmp/flowstudy-es-benchmark.tgz -C tests/performance elasticsearch
+          ssh "${SSH_OPTS[@]}" "${ECS_USER}@${ECS_HOST}" "mkdir -p '${ECS_DEPLOY_PATH}/tests/performance'"
+          cat /tmp/flowstudy-es-benchmark.tgz | ssh "${SSH_OPTS[@]}" "${ECS_USER}@${ECS_HOST}" "tar -xzf - -C '${ECS_DEPLOY_PATH}/tests/performance'"
+
+      - name: Run benchmark on ECS
+        shell: bash
+        env:
+          DOCUMENT_COUNT: ${{ inputs.document_count }}
+          DEPTHS: ${{ inputs.depths }}
+          PAGE_SIZES: ${{ inputs.page_sizes }}
+          CONCURRENCY: ${{ inputs.concurrency }}
+        run: |
+          SSH_OPTS=(-i ~/.ssh/id_rsa -o IdentitiesOnly=yes -o BatchMode=yes)
+          ssh "${SSH_OPTS[@]}" "${ECS_USER}@${ECS_HOST}" \
+            "REMOTE_TEST_PATH='${REMOTE_TEST_PATH}' DOCUMENT_COUNT='$DOCUMENT_COUNT' DEPTHS='$DEPTHS' PAGE_SIZES='$PAGE_SIZES' CONCURRENCY='$CONCURRENCY' bash -s" <<'REMOTE_SCRIPT'
+          set -euo pipefail
+          cd "$REMOTE_TEST_PATH"
+          docker compose up -d
+          ready=0
+          for attempt in $(seq 1 60); do
+            if curl -fsS --max-time 3 http://127.0.0.1:9200/_cluster/health >/dev/null; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$ready" -ne 1 ]; then
+            docker compose logs --tail=100 >&2 || true
+            exit 1
+          fi
+
+          docker run --rm --network host \
+            -e DOCUMENT_COUNT -e DEPTHS -e PAGE_SIZES -e CONCURRENCY \
+            -v "$PWD:/work" -w /work python:3.11-slim \
+            bash -c 'python scripts/generate_data.py --es-url http://127.0.0.1:9200 --count "$DOCUMENT_COUNT" --recreate && \
+              python scripts/benchmark.py --es-url http://127.0.0.1:9200 \
+                --depths "$DEPTHS" --page-sizes "$PAGE_SIZES" --concurrency "$CONCURRENCY" \
+                --output results/es-pagination-summary.csv'
+
+          docker compose down
+          REMOTE_SCRIPT
+
+      - name: Download benchmark results
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p benchmark-results
+          SSH_OPTS=(-i ~/.ssh/id_rsa -o IdentitiesOnly=yes -o BatchMode=yes)
+          ssh "${SSH_OPTS[@]}" "${ECS_USER}@${ECS_HOST}" \
+            "tar -czf - -C '${REMOTE_TEST_PATH}' results" > /tmp/flowstudy-es-results.tgz
+          tar -xzf /tmp/flowstudy-es-results.tgz -C benchmark-results --strip-components=1
+
+      - name: Upload benchmark results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: elasticsearch-pagination-results-${{ github.run_id }}
+          path: benchmark-results/
+          if-no-files-found: warn
