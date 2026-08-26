@@ -1,0 +1,8 @@
+-- Optional cleanup after validating a report. Replace <run-id> explicitly.
+-- DELETE o FROM fs_membership_order o
+-- JOIN fs_membership_product p ON p.id = o.product_id
+-- WHERE p.name LIKE 'PERF_SECKILL_<run-id>_%';
+-- DELETE FROM fs_membership_product WHERE name LIKE 'PERF_SECKILL_<run-id>_%';
+-- DELETE FROM sys_user WHERE username = 'perf_seckill_<run-id>';
+-- Redis keys to remove: flowstudy:seckill:product:stock:<product-id>
+-- and flowstudy:seckill:reservation:<order-no> for the generated orders.

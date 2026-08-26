@@ -39,7 +39,7 @@ config = {
         "vhost": os.environ.get("RABBITMQ_VHOST", "/"),
         "username": os.environ["RABBITMQ_DEFAULT_USER"],
         "password": os.environ["RABBITMQ_DEFAULT_PASS"],
-        "queue_name": os.environ.get("RABBITMQ_QUEUE", "submission_queue"),
+        "queue_name": os.environ.get("JUDGE_SUBMISSION_QUEUE", "flowstudy.judge.submission.v2"),
     },
     "mysql": {
         "hostname": "mysql",
@@ -67,6 +67,9 @@ chmod 600 "$DEPLOY_PATH/judge/config.json"
 echo "Deploying FlowStudy with image tags: web=$WEB_IMAGE_TAG server=$SERVER_IMAGE_TAG judge=$JUDGE_IMAGE_TAG opencode=$OPENCODE_IMAGE_TAG"
 
 docker compose -f docker-compose.prod.yml pull nginx web server mysql redis rabbitmq judge opencode-fixed
+# The Nginx configuration is bind-mounted. Recreate it so a synchronized
+# configuration is actually loaded on an already-running ECS deployment.
+docker compose -f docker-compose.prod.yml up -d --force-recreate nginx
 docker compose -f docker-compose.prod.yml up -d
 docker compose -f docker-compose.prod.yml ps
 

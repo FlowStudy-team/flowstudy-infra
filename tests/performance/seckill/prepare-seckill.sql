@@ -1,0 +1,6 @@
+-- Run through run-seckill.ps1. Values are injected per scenario and must not
+-- be executed unchanged against shared or production data.
+--
+-- Required tables: sys_user, fs_membership_product, fs_membership_order.
+-- Each scenario creates a product named PERF_SECKILL_<run-id>_<concurrency>
+-- with an independent stock baseline, so previous rounds cannot affect it.

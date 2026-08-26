@@ -123,7 +123,7 @@ REDIS_PASSWORD=replace-with-real-redis-password
 RABBITMQ_DEFAULT_USER=flowstudy
 RABBITMQ_DEFAULT_PASS=replace-with-real-rabbitmq-password
 RABBITMQ_VHOST=/
-RABBITMQ_QUEUE=submission_queue
+JUDGE_SUBMISSION_QUEUE=flowstudy.judge.submission.v2
 
 JWT_SECRET=replace-with-a-long-random-secret-at-least-32-bytes
 JWT_EXPIRE_SECONDS=7200
@@ -349,7 +349,7 @@ docker compose -f /opt/flowstudy/docker-compose.prod.yml logs --tail=200 mysql
 重点确认：
 
 ```text
-RABBITMQ_QUEUE=submission_queue
+JUDGE_SUBMISSION_QUEUE=flowstudy.judge.submission.v2
 RabbitMQ 用户密码正确
 Judge config.json 已生成
 MySQL schema 已初始化
