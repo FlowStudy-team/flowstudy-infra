@@ -26,6 +26,14 @@ on:
         description: "flowstudy-runtime-node20-opencode image tag"
         required: false
         default: ""
+      store_order_rate_limit:
+        description: "Temporary store-order limit per window; leave blank to use .env/default"
+        required: false
+        default: ""
+      store_order_rate_window_seconds:
+        description: "Temporary store-order rate-limit window in seconds"
+        required: false
+        default: ""
 
 jobs:
   deploy:
@@ -111,6 +119,8 @@ jobs:
             SERVER_IMAGE_TAG='${{ steps.tags.outputs.server_image_tag }}' \
             JUDGE_IMAGE_TAG='${{ steps.tags.outputs.judge_image_tag }}' \
             OPENCODE_IMAGE_TAG='${{ steps.tags.outputs.opencode_image_tag }}' \
+            DEPLOY_STORE_ORDER_RATE_LIMIT='${{ github.event.inputs.store_order_rate_limit || '' }}' \
+            DEPLOY_STORE_ORDER_RATE_WINDOW_SECONDS='${{ github.event.inputs.store_order_rate_window_seconds || '' }}' \
             ECS_DEPLOY_PATH='${ECS_DEPLOY_PATH}' \
             ./deploy.sh '${{ steps.tags.outputs.image_tag }}'"
 
