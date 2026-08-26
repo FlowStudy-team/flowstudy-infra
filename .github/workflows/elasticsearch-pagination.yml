@@ -75,7 +75,7 @@ jobs:
         run: |
           SSH_OPTS=(-i ~/.ssh/id_rsa -o IdentitiesOnly=yes -o BatchMode=yes)
           ssh "${SSH_OPTS[@]}" "${ECS_USER}@${ECS_HOST}" \
-            "REMOTE_TEST_PATH='${REMOTE_TEST_PATH}' DOCUMENT_COUNT='$DOCUMENT_COUNT' DEPTHS='$DEPTHS' PAGE_SIZES='$PAGE_SIZES' CONCURRENCY='$CONCURRENCY' bash -s" <<'REMOTE_SCRIPT'
+            "REMOTE_TEST_PATH='${REMOTE_TEST_PATH}' DOCUMENT_COUNT='$DOCUMENT_COUNT' DEPTHS='$DEPTHS' PAGE_SIZES='$PAGE_SIZES' CONCURRENCY='$CONCURRENCY' ITERATIONS='$ITERATIONS' WARMUP='$WARMUP' bash -s" <<'REMOTE_SCRIPT'
           set -euo pipefail
           cd "$REMOTE_TEST_PATH"
           cleanup() {
