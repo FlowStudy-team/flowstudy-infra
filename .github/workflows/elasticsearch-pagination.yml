@@ -10,15 +10,23 @@ on:
       depths:
         description: "Comma-separated offsets"
         required: false
-        default: "0,1000,10000,50000,100000"
+        default: "0,1000,10000,50000"
       page_sizes:
         description: "Comma-separated page sizes"
         required: false
-        default: "20,50,100"
+        default: "50,100"
       concurrency:
         description: "Comma-separated concurrency levels"
         required: false
-        default: "1,4,16"
+        default: "1,4"
+      iterations:
+        description: "Samples per concurrency level"
+        required: false
+        default: "1"
+      warmup:
+        description: "Warmup samples per concurrency level"
+        required: false
+        default: "0"
 
 jobs:
   benchmark:
@@ -62,6 +70,8 @@ jobs:
           DEPTHS: ${{ inputs.depths }}
           PAGE_SIZES: ${{ inputs.page_sizes }}
           CONCURRENCY: ${{ inputs.concurrency }}
+          ITERATIONS: ${{ inputs.iterations }}
+          WARMUP: ${{ inputs.warmup }}
         run: |
           SSH_OPTS=(-i ~/.ssh/id_rsa -o IdentitiesOnly=yes -o BatchMode=yes)
           ssh "${SSH_OPTS[@]}" "${ECS_USER}@${ECS_HOST}" \
@@ -83,11 +93,12 @@ jobs:
           fi
 
           docker run --rm --network host \
-            -e DOCUMENT_COUNT -e DEPTHS -e PAGE_SIZES -e CONCURRENCY \
+            -e DOCUMENT_COUNT -e DEPTHS -e PAGE_SIZES -e CONCURRENCY -e ITERATIONS -e WARMUP \
             -v "$PWD:/work" -w /work python:3.11-slim \
             bash -c 'python scripts/generate_data.py --es-url http://127.0.0.1:9200 --count "$DOCUMENT_COUNT" --recreate && \
               python scripts/benchmark.py --es-url http://127.0.0.1:9200 \
                 --depths "$DEPTHS" --page-sizes "$PAGE_SIZES" --concurrency "$CONCURRENCY" \
+                --iterations "$ITERATIONS" --warmup "$WARMUP" \
                 --output results/es-pagination-summary.csv'
 
           docker compose down
