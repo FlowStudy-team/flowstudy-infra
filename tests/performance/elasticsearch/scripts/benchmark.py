@@ -166,7 +166,7 @@ def main() -> None:
         for size in page_sizes:
             for offset in depths:
                 for concurrency in concurrencies:
-                    job = lambda: run_once(args.es_url, args.index, args.keyword, mode, offset, size)
+                    job = lambda _: run_once(args.es_url, args.index, args.keyword, mode, offset, size)
                     with ThreadPoolExecutor(max_workers=concurrency) as pool:
                         list(pool.map(job, range(args.warmup * concurrency)))
                         records = list(pool.map(job, range(args.iterations * concurrency)))
