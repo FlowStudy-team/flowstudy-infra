@@ -78,6 +78,10 @@ jobs:
             "REMOTE_TEST_PATH='${REMOTE_TEST_PATH}' DOCUMENT_COUNT='$DOCUMENT_COUNT' DEPTHS='$DEPTHS' PAGE_SIZES='$PAGE_SIZES' CONCURRENCY='$CONCURRENCY' bash -s" <<'REMOTE_SCRIPT'
           set -euo pipefail
           cd "$REMOTE_TEST_PATH"
+          cleanup() {
+            docker compose down || true
+          }
+          trap cleanup EXIT
           docker compose up -d
           ready=0
           for attempt in $(seq 1 60); do
@@ -101,7 +105,6 @@ jobs:
                 --iterations "$ITERATIONS" --warmup "$WARMUP" \
                 --output results/es-pagination-summary.csv'
 
-          docker compose down
           REMOTE_SCRIPT
 
       - name: Download benchmark results
