@@ -96,14 +96,12 @@ jobs:
             exit 1
           fi
 
-          docker run --rm --network host \
-            -e DOCUMENT_COUNT -e DEPTHS -e PAGE_SIZES -e CONCURRENCY -e ITERATIONS -e WARMUP \
-            -v "$PWD:/work" -w /work python:3.11-slim \
-            bash -c 'python scripts/generate_data.py --es-url http://127.0.0.1:9200 --count "$DOCUMENT_COUNT" --recreate && \
-              python scripts/benchmark.py --es-url http://127.0.0.1:9200 \
-                --depths "$DEPTHS" --page-sizes "$PAGE_SIZES" --concurrency "$CONCURRENCY" \
-                --iterations "$ITERATIONS" --warmup "$WARMUP" \
-                --output results/es-pagination-summary.csv'
+          command -v python3
+          python3 scripts/generate_data.py --es-url http://127.0.0.1:9200 --count "$DOCUMENT_COUNT" --recreate
+          python3 scripts/benchmark.py --es-url http://127.0.0.1:9200 \
+            --depths "$DEPTHS" --page-sizes "$PAGE_SIZES" --concurrency "$CONCURRENCY" \
+            --iterations "$ITERATIONS" --warmup "$WARMUP" \
+            --output results/es-pagination-summary.csv
 
           REMOTE_SCRIPT
 
