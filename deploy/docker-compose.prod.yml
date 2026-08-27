@@ -47,7 +47,7 @@ services:
       RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER}
       RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS}
       RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/}
-      JUDGE_SUBMISSION_QUEUE: ${JUDGE_SUBMISSION_QUEUE:-flowstudy.judge.submission.v2}
+      JUDGE_SUBMISSION_QUEUE: ${JUDGE_SUBMISSION_QUEUE:-flowstudy.judge.submission.v3}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRE_SECONDS: ${JWT_EXPIRE_SECONDS:-7200}
       OPENCODE_BASE_URL: http://opencode-fixed:4096
@@ -66,8 +66,27 @@ services:
       OBS_SECRET_KEY: ${OBS_SECRET_KEY:-}
       RATE_LIMIT_WINDOW_SECONDS: ${RATE_LIMIT_WINDOW_SECONDS:-60}
       RATE_LIMIT_STORE_ORDER_PER_WINDOW: ${RATE_LIMIT_STORE_ORDER_PER_WINDOW:-5}
+      AGENT_RUNTIME_BASE_URL: http://agent-runtime:8090
+      AGENT_RUNTIME_TOKEN: ${AGENT_RUNTIME_TOKEN}
     expose:
       - "8080"
+    networks:
+      - flowstudy-net
+
+  agent-runtime:
+    image: ${SWR_REGISTRY}/${SWR_NAMESPACE}/flowstudy-agent-runtime:${AGENT_RUNTIME_IMAGE_TAG}
+    container_name: flowstudy-agent-runtime
+    restart: unless-stopped
+    environment:
+      PORT: 8090
+      AGENT_RUNTIME_TOKEN: ${AGENT_RUNTIME_TOKEN}
+      FLOWSTUDY_CORE_BASE_URL: http://server:8080
+      DSH_COMMAND: ${DSH_COMMAND:-dsh}
+      DSH_PROFILE: ${DSH_PROFILE:-headless}
+      DSH_TIMEOUT_MS: ${DSH_TIMEOUT_MS:-120000}
+      DSH_MODEL: ${DSH_MODEL:-}
+    expose:
+      - "8090"
     networks:
       - flowstudy-net
 

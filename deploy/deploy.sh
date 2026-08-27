@@ -24,6 +24,14 @@ set -a
 . "$DEPLOY_PATH/.env"
 set +a
 
+# The v2 judge queue was created without the dead-letter arguments required by
+# the current application. Keep the durable RabbitMQ volume and migrate only
+# the queue name so Spring can declare the current topology cleanly.
+if [ "${JUDGE_SUBMISSION_QUEUE:-}" = "flowstudy.judge.submission.v2" ]; then
+  echo "Migrating judge submission queue from v2 to v3 ..."
+  export JUDGE_SUBMISSION_QUEUE="flowstudy.judge.submission.v3"
+fi
+
 required_vars=(
   SWR_REGISTRY
   SWR_NAMESPACE
