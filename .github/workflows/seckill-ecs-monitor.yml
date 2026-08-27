@@ -42,7 +42,7 @@ jobs:
           while [ "$(date +%s)" -lt "$end" ]; do
             ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
             cpu="$(docker stats --no-stream --format '{{.Name}},{{.CPUPerc}}' flowstudy-server 2>/dev/null | awk -F, '{gsub(/%/,"",$2); print $2+0}' || true)"
-            depth="$(docker compose exec -T rabbitmq rabbitmqctl list_queues -q name messages 2>/dev/null | awk '$1=="flowstudy.store.order.queue" {print $2+0}' || true)"
+            depth="$(docker compose --env-file .env -f docker-compose.prod.yml exec -T rabbitmq rabbitmqctl list_queues -q name messages 2>/dev/null | awk '$1=="flowstudy.store.order.queue" {print $2+0}' || true)"
             echo "$ts,${cpu:-0},${depth:-0}"
             sleep "$interval"
           done
