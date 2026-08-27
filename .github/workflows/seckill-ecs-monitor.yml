@@ -1,0 +1,49 @@
+name: Seckill ECS Monitor
+
+on:
+  workflow_dispatch:
+    inputs:
+      duration_seconds:
+        description: "Monitor duration"
+        required: true
+        default: "180"
+      interval_seconds:
+        description: "Sampling interval"
+        required: true
+        default: "2"
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    env:
+      ECS_HOST: ${{ secrets.ECS_HOST }}
+      ECS_USER: ${{ secrets.ECS_USER }}
+      ECS_DEPLOY_PATH: ${{ secrets.ECS_DEPLOY_PATH }}
+    steps:
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.ECS_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "$ECS_HOST" >> ~/.ssh/known_hosts
+
+      - name: Collect CPU and queue depth
+        shell: bash
+        run: |
+          duration='${{ inputs.duration_seconds }}'
+          interval='${{ inputs.interval_seconds }}'
+          [[ "$duration" =~ ^[0-9]+$ && "$duration" -gt 0 ]]
+          [[ "$interval" =~ ^[0-9]+$ && "$interval" -gt 0 ]]
+          ssh "$ECS_USER@$ECS_HOST" "cd '$ECS_DEPLOY_PATH' && duration=$duration interval=$interval bash -s" <<'REMOTE'
+          set -Eeuo pipefail
+          echo 'timestamp,server_cpu_percent,rabbitmq_queue_depth'
+          end=$(( $(date +%s) + duration ))
+          while [ "$(date +%s)" -lt "$end" ]; do
+            ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            cpu="$(docker stats --no-stream --format '{{.Name}},{{.CPUPerc}}' flowstudy-server 2>/dev/null | awk -F, '{gsub(/%/,"",$2); print $2+0}' || true)"
+            depth="$(docker compose exec -T rabbitmq rabbitmqctl list_queues -q name messages 2>/dev/null | awk '$1=="flowstudy.store.order.queue" {print $2+0}' || true)"
+            echo "$ts,${cpu:-0},${depth:-0}"
+            sleep "$interval"
+          done
+          REMOTE

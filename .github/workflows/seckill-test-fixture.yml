@@ -1,0 +1,44 @@
+name: Seckill Test Fixture
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "prepare or cleanup"
+        required: true
+        type: choice
+        options: [prepare, cleanup]
+      product_id:
+        description: "Required for cleanup"
+        required: false
+        default: ""
+
+jobs:
+  fixture:
+    runs-on: ubuntu-latest
+    env:
+      ECS_HOST: ${{ secrets.ECS_HOST }}
+      ECS_USER: ${{ secrets.ECS_USER }}
+      ECS_DEPLOY_PATH: ${{ secrets.ECS_DEPLOY_PATH }}
+    steps:
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.ECS_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "$ECS_HOST" >> ~/.ssh/known_hosts
+
+      - name: Prepare isolated product
+        if: inputs.action == 'prepare'
+        shell: bash
+        run: |
+          ssh "$ECS_USER@$ECS_HOST" "cd '$ECS_DEPLOY_PATH' && set -a && . ./.env && set +a && docker compose exec -T -e MYSQL_PWD=\"\$MYSQL_PASSWORD\" mysql mysql -N -u\"\$MYSQL_USER\" \"\$MYSQL_DATABASE\" -e \"INSERT INTO fs_membership_product(name,description,price_cents,token_amount,stock,sold_count,sale_start_at,sale_end_at,status,sort_order) VALUES ('ECS_SECKILL_TEST_'\"\$(date +%s)\"'','Isolated ECS performance fixture',990,1000,300,0,NOW()-INTERVAL 1 MINUTE,DATE_ADD(NOW(),INTERVAL 1 DAY),'ACTIVE',999); SELECT LAST_INSERT_ID();\""
+
+      - name: Cleanup isolated product
+        if: inputs.action == 'cleanup'
+        shell: bash
+        run: |
+          test -n "${{ inputs.product_id }}"
+          [[ "${{ inputs.product_id }}" =~ ^[0-9]+$ ]]
+          ssh "$ECS_USER@$ECS_HOST" "cd '$ECS_DEPLOY_PATH' && set -a && . ./.env && set +a && docker compose exec -T -e MYSQL_PWD=\"\$MYSQL_PASSWORD\" mysql mysql -N -u\"\$MYSQL_USER\" \"\$MYSQL_DATABASE\" -e \"DELETE FROM fs_membership_order WHERE product_id=${{ inputs.product_id }}; DELETE FROM fs_membership_product WHERE id=${{ inputs.product_id }};\""
