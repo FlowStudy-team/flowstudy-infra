@@ -135,3 +135,9 @@ jobs:
       - name: Smoke test from runner
         run: |
           curl -fsS --max-time 10 "http://${ECS_HOST}/api/health"
+
+      - name: Collect server diagnostics
+        if: always()
+        shell: bash
+        run: |
+          ssh "${ECS_USER}@${ECS_HOST}" "cd '${ECS_DEPLOY_PATH}' && docker compose --env-file .env -f docker-compose.prod.yml logs --tail=160 server" || true
