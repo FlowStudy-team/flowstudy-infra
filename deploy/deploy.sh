@@ -12,6 +12,7 @@ INPUT_OPENCODE_IMAGE_TAG="${OPENCODE_IMAGE_TAG:-}"
 # They keep the production defaults in .env unchanged after a test deployment.
 INPUT_STORE_ORDER_RATE_LIMIT="${DEPLOY_STORE_ORDER_RATE_LIMIT:-}"
 INPUT_STORE_ORDER_RATE_WINDOW_SECONDS="${DEPLOY_STORE_ORDER_RATE_WINDOW_SECONDS:-}"
+RESET_MYSQL_VOLUME="${RESET_MYSQL_VOLUME:-false}"
 
 if [ ! -f ".env" ]; then
   echo "Missing $DEPLOY_PATH/.env. Create it from deploy/env.example before deploying." >&2
@@ -51,6 +52,24 @@ export JUDGE_IMAGE_TAG="${INPUT_JUDGE_IMAGE_TAG:-${JUDGE_IMAGE_TAG:-$IMAGE_TAG}}
 export OPENCODE_IMAGE_TAG="${INPUT_OPENCODE_IMAGE_TAG:-${OPENCODE_IMAGE_TAG:-$IMAGE_TAG}}"
 export RATE_LIMIT_STORE_ORDER_PER_WINDOW="${INPUT_STORE_ORDER_RATE_LIMIT:-${RATE_LIMIT_STORE_ORDER_PER_WINDOW:-5}}"
 export RATE_LIMIT_WINDOW_SECONDS="${INPUT_STORE_ORDER_RATE_WINDOW_SECONDS:-${RATE_LIMIT_WINDOW_SECONDS:-60}}"
+
+if [ "$RESET_MYSQL_VOLUME" = "true" ]; then
+  echo "Resetting the MySQL data volume as explicitly requested ..."
+  mysql_volume="$(docker volume ls --filter label=com.docker.compose.volume=flowstudy-mysql-data --format '{{.Name}}')"
+  volume_count="$(printf '%s\n' "$mysql_volume" | sed '/^$/d' | wc -l | tr -d ' ')"
+  if [ "$volume_count" -gt 1 ]; then
+    echo "Multiple MySQL volumes matched; refusing to delete any volume." >&2
+    printf '%s\n' "$mysql_volume" >&2
+    exit 1
+  fi
+  docker compose -f docker-compose.prod.yml stop mysql || true
+  docker compose -f docker-compose.prod.yml rm -f mysql || true
+  if [ "$volume_count" -eq 1 ]; then
+    docker volume rm "$mysql_volume"
+  else
+    echo "MySQL data volume was already absent; continuing with initialization."
+  fi
+fi
 
 mkdir -p "$DEPLOY_PATH/judge"
 python3 - <<'PY'
