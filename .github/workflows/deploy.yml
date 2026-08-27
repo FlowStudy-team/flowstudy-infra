@@ -95,11 +95,13 @@ jobs:
           rm -rf /tmp/flowstudy-deploy-package
           mkdir -p /tmp/flowstudy-deploy-package/nginx
           mkdir -p /tmp/flowstudy-deploy-package/mysql
+          mkdir -p /tmp/flowstudy-deploy-package/mysql/migration
           cp deploy/docker-compose.prod.yml /tmp/flowstudy-deploy-package/docker-compose.prod.yml
           cp deploy/deploy.sh /tmp/flowstudy-deploy-package/deploy.sh
           cp deploy/env.example /tmp/flowstudy-deploy-package/env.example
           cp deploy/nginx/flowstudy.conf /tmp/flowstudy-deploy-package/nginx/flowstudy.conf
           cp -R mysql/init /tmp/flowstudy-deploy-package/mysql/init
+          cp mysql/migration/20260827-content-search-resource.sql /tmp/flowstudy-deploy-package/mysql/migration/20260827-content-search-resource.sql
           tar -czf /tmp/flowstudy-deploy-package.tgz -C /tmp/flowstudy-deploy-package .
 
       - name: Sync files to ECS
