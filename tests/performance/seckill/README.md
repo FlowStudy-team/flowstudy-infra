@@ -1,82 +1,56 @@
-# FlowStudy 秒杀接口压测
+# 会员秒杀压测方案
 
-本目录验证 `flowstudy-core` 的 `feat/store-seckill` 分支：Redis Lua 预扣库存、RabbitMQ 异步订单落库、数据库条件扣库存和库存回补是否能在并发请求下保持一致。
+本方案使用本地 JMeter 发压，ECS 远程承载服务。JMeter 的线程数代表虚拟用户数；只有在请求被同步释放、或在持续时间窗口内形成稳定请求速率时，才分别对应瞬时并发或持续负载。旧版 `seckill.jmx` 是单次请求基线，不再用于描述“10 秒 Ramp-up 的并发压测”。
 
-## 前置条件
+## 测试场景
 
-- Core 使用 `feat/store-seckill` 启动在 `http://127.0.0.1:8080`。
-- MySQL、Redis、RabbitMQ 已启动；RabbitMQ 管理插件可选，未开启时报告中队列深度为 `UNAVAILABLE`。
-- 已安装 JMeter 5.6+，默认路径为 `F:\software\apache-jmeter-5.6.3\bin\jmeter.bat`。
-- 设置数据库密码。不要将该命令或密码提交到仓库。
+### 1. 持续负载测试
 
-```powershell
-$env:FLOWSTUDY_PERF_DB_PASSWORD = '<local-mysql-password>'
-$env:FLOWSTUDY_PERF_RABBIT_PASSWORD = '<local-rabbitmq-password>'
-```
-
-运行时建议提高本机 Core 的订单限流容量，例如：
+使用 `sustained-load.jmx`，每个虚拟用户在指定持续时间内循环请求。通过多次执行逐级增加 `threads`，例如 50、100、300、500、1000；`ramp_seconds` 只表示将线程逐步启动的时间，不代表并发请求同时到达。正式 ECS 测试必须使用独立测试商品，并根据库存和目标 QPS 设置持续时长；禁止在正式商品上执行循环负载。必要时使用 `enable_throughput_cap=true` 控制目标请求速率。
 
 ```powershell
-$env:RATE_LIMIT_STORE_ORDER_PER_WINDOW = '10000'
-$env:RATE_LIMIT_WINDOW_SECONDS = '60'
+jmeter -n -t sustained-load.jmx -l sustained-100.jtl `
+  -Jcore_host=1.92.196.205 -Jcore_port=80 -Jauth_token='<JWT>' `
+  -Jproduct_id=1 -Jthreads=100 -Jramp_seconds=60 -Jduration_seconds=300
 ```
 
-这避免单 IP 令牌桶限流掩盖秒杀库存链路的吞吐。限流行为应使用默认配置单独验证。
+### 2. 瞬时并发测试
 
-## 执行
-
-在 infra 仓库执行：
+使用 `instant-concurrency.jmx`，线程数设置为 100、300、500、1000，并配置 `Synchronizing Timer` 的 `groupSize` 与线程数一致。线程启动后先在同步点等待，达到目标数量后同时释放，因此该场景用于模拟突发请求同时到达，而不是用 Ramp-up 时间推断并发量。
 
 ```powershell
-.\tests\performance\seckill\run-seckill.ps1
+jmeter -n -t instant-concurrency.jmx -l instant-1000.jtl `
+  -Jcore_host=1.92.196.205 -Jcore_port=80 -Jauth_token='<JWT>' `
+  -Jproduct_id=1 -Jconcurrency=1000 -Jsync_group_size=1000 `
+  -Jsync_timeout_ms=60000 -Jramp_seconds=1
 ```
 
-默认执行 `50`、`100`、`200` 并发。每个线程只发起一次下单请求，每档使用一个新建的、库存为 `100` 的测试商品，因此可直接观察抢购成功、售罄和是否超卖。
+### 3. 防超卖测试
 
-自定义并发和库存：
+使用 `oversell-protection.jmx`，先准备一个独立测试商品，库存设置为 300；将 `requests` 和 `sync_group_size` 设置为大于 300，例如 500 或 1000，使请求尽可能同时到达。请求结束后等待 RabbitMQ 队列清空，再校验：成功订单数不超过 300、最终库存不小于 0、销量增加量与成功订单数一致、最终库存与成功订单数之和等于 300、订单号无重复。
 
 ```powershell
-.\tests\performance\seckill\run-seckill.ps1 `
-  -ConcurrencyCsv '20,50,100' `
-  -Stock 100 `
-  -DbPassword '<local-mysql-password>'
+jmeter -n -t oversell-protection.jmx -l oversell-500.jtl `
+  -Jcore_host=1.92.196.205 -Jcore_port=80 -Jauth_token='<JWT>' `
+  -Jproduct_id=<TEST_PRODUCT_ID> -Jrequests=500 -Jsync_group_size=500
 ```
 
-测试结束后若确认无需保留测试数据，可重新执行并带 `-Cleanup`，或按 `cleanup-seckill.sql` 中的规则手工清理。原始结果默认被 Git 忽略。
+测试商品的创建和清理可通过 Infra 的 `Seckill Test Fixture` workflow 完成：选择 `prepare` 创建库存 300 的独立商品，记录 workflow 日志中的商品 ID；测试结束后选择 `cleanup` 并填写商品 ID。生产环境禁止直接修改正式商品库存。
+
+## 统一采集指标
+
+结果表只保留：QPS、P95 延迟、错误率、ECS CPU 使用率、RabbitMQ Queue Depth。QPS 为测试窗口内请求数除以实际时长；P95 使用 JMeter `elapsed` 计算；错误率为非预期响应数占比，防超卖场景中的库存不足响应应标记为业务预期；CPU 和 Queue Depth 必须在 ECS 侧同步采样。
+
+## 执行顺序
+
+1. 确认 ECS 健康检查、商品状态、Redis、RabbitMQ 和数据库正常。
+2. 创建独立测试用户并获取 JWT，准备独立测试商品或记录准确的初始库存。
+3. 压测前记录库存、销量、成功订单数和 RabbitMQ Queue Depth。
+4. 启动 `Seckill ECS Monitor` workflow，持续采集 ECS Core 容器 CPU 和订单队列深度；随后本地启动 JMeter，保存 `.jtl` 原始结果。监控时长应覆盖预热、正式采样和排空队列阶段。
+5. 持续负载按压力档位逐级执行；瞬时并发按 100/300/500/1000 分档执行；防超卖执行库存 300、请求数大于 300 的场景。
+6. 等待订单消费者处理完成，再查询订单数、库存和销量，填写结果模板。
+7. 恢复限流、删除测试用户和测试商品，保留 JTL、监控 workflow 日志和结果记录。
 
 ## 结果文件
 
-每次测试产生一个独立目录：
-
-```text
-results/<timestamp>/
-  seckill-<concurrency>.jtl
-  summary.csv
-  mysql-before-<concurrency>.txt
-  mysql-after-<concurrency>.txt
-  redis-after-<concurrency>.txt
-  rabbitmq-<concurrency>.txt
-  report.md
-```
-
-`report.md` 给出并发、QPS、平均响应时间、P95、P99、HTTP 200/409/429/5xx、最终订单数、MySQL 与 Redis 库存、队列深度及超卖结论。
-
-## 数据口径
-
-- HTTP `200`：Redis 成功预扣库存并将订单任务投递给 RabbitMQ；它不代表订单已经写入 MySQL。
-- HTTP `409`：库存已售罄，是库存受限秒杀场景中的预期响应，不计为服务端异常。
-- `DB订单`：等待消息消费稳定后查询的最终订单数，是判定库存一致性的依据。
-- `QPS`：本档总 HTTP 请求数除以最早与最晚请求时间戳之间的实际秒数。
-- `P95/P99`：JMeter `elapsed` 字段的百分位响应时间。
-
-无超卖需同时满足：
-
-```text
-DB订单 <= 初始库存
-DB库存 >= 0
-订单号无重复
-DB库存 + DB订单 = 初始库存
-Redis库存 = DB库存
-```
-
-本压测运行在同一台 Windows 机器，JMeter、Core、MySQL、Redis 和 RabbitMQ 争用同一套 CPU、内存和网络栈。它适合验证并发正确性和本机回归，不可直接作为 ECS 生产容量数据。
+使用 [`result-template.md`](result-template.md) 记录每个场景。旧版 `run-seckill.ps1` 依赖本地 MySQL、Redis、RabbitMQ，适合本地集成验证，不适合 ECS 远程压测；远程执行应直接使用上述三个 JMX 配置。
