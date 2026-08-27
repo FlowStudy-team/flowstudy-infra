@@ -76,6 +76,8 @@ services:
   agent-runtime:
     image: ${SWR_REGISTRY}/${SWR_NAMESPACE}/flowstudy-agent-runtime:${AGENT_RUNTIME_IMAGE_TAG:-latest}
     container_name: flowstudy-agent-runtime
+    profiles:
+      - agent-runtime
     restart: unless-stopped
     environment:
       PORT: 8090
