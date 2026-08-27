@@ -34,6 +34,11 @@ on:
         description: "Temporary store-order rate-limit window in seconds"
         required: false
         default: ""
+      reset_mysql_volume:
+        description: "DESTRUCTIVE: delete the ECS MySQL data volume before initialization"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   deploy:
@@ -123,6 +128,7 @@ jobs:
             OPENCODE_IMAGE_TAG='${{ steps.tags.outputs.opencode_image_tag }}' \
             DEPLOY_STORE_ORDER_RATE_LIMIT='${{ github.event.inputs.store_order_rate_limit || '' }}' \
             DEPLOY_STORE_ORDER_RATE_WINDOW_SECONDS='${{ github.event.inputs.store_order_rate_window_seconds || '' }}' \
+            RESET_MYSQL_VOLUME='${{ github.event.inputs.reset_mysql_volume || 'false' }}' \
             ECS_DEPLOY_PATH='${ECS_DEPLOY_PATH}' \
             ./deploy.sh '${{ steps.tags.outputs.image_tag }}'"
 
