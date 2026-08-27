@@ -35,6 +35,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
       DB_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8&allowPublicKeyRetrieval=true
@@ -52,6 +54,16 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD}
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ELASTICSEARCH_USERNAME: ${ELASTICSEARCH_USERNAME:-elastic}
+      ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD}
+      ELASTICSEARCH_INDEX: ${ELASTICSEARCH_INDEX:-flowstudy-content}
+      OBJECT_STORAGE_PROVIDER: ${OBJECT_STORAGE_PROVIDER:-mock}
+      OBS_BUCKET: ${OBS_BUCKET:-}
+      OBS_ENDPOINT: ${OBS_ENDPOINT:-https://obs.cn-east-3.myhuaweicloud.com}
+      OBS_REGION: ${OBS_REGION:-cn-east-3}
+      OBS_ACCESS_KEY: ${OBS_ACCESS_KEY:-}
+      OBS_SECRET_KEY: ${OBS_SECRET_KEY:-}
       RATE_LIMIT_WINDOW_SECONDS: ${RATE_LIMIT_WINDOW_SECONDS:-60}
       RATE_LIMIT_STORE_ORDER_PER_WINDOW: ${RATE_LIMIT_STORE_ORDER_PER_WINDOW:-5}
     expose:
@@ -102,6 +114,29 @@ services:
     networks:
       - flowstudy-net
 
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+    container_name: flowstudy-elasticsearch
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "true"
+      xpack.security.http.ssl.enabled: "false"
+      ELASTIC_PASSWORD: ${ELASTICSEARCH_PASSWORD}
+      ES_JAVA_OPTS: ${ELASTICSEARCH_JAVA_OPTS:--Xms1g -Xmx1g}
+    volumes:
+      - flowstudy-es-data:/usr/share/elasticsearch/data
+    expose:
+      - "9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -u elastic:$${ELASTIC_PASSWORD} http://localhost:9200/_cluster/health >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - flowstudy-net
+
   rabbitmq:
     image: ${SWR_REGISTRY}/${SWR_NAMESPACE}/rabbitmq:3.13-management-alpine
     container_name: flowstudy-rabbitmq
@@ -149,6 +184,7 @@ volumes:
   flowstudy-mysql-data:
   flowstudy-redis-data:
   flowstudy-rabbitmq-data:
+  flowstudy-es-data:
 
 networks:
   flowstudy-net:

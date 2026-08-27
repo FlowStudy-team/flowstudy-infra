@@ -73,11 +73,32 @@ chmod 600 "$DEPLOY_PATH/judge/config.json"
 echo "Deploying FlowStudy with image tags: web=$WEB_IMAGE_TAG server=$SERVER_IMAGE_TAG judge=$JUDGE_IMAGE_TAG opencode=$OPENCODE_IMAGE_TAG"
 
 docker compose -f docker-compose.prod.yml pull nginx web server mysql redis rabbitmq judge opencode-fixed
+docker compose -f docker-compose.prod.yml pull elasticsearch
 # The Nginx configuration is bind-mounted. Recreate it so a synchronized
 # configuration is actually loaded on an already-running ECS deployment.
 docker compose -f docker-compose.prod.yml up -d --force-recreate nginx
 docker compose -f docker-compose.prod.yml up -d
 docker compose -f docker-compose.prod.yml ps
+
+echo "Waiting for Elasticsearch ..."
+for i in $(seq 1 30); do
+  if docker compose -f docker-compose.prod.yml exec -T elasticsearch curl -fsS -u "elastic:${ELASTICSEARCH_PASSWORD}" http://127.0.0.1:9200/_cluster/health >/dev/null; then
+    break
+  fi
+  if [ "$i" -eq 30 ]; then
+    echo "Elasticsearch health check failed." >&2
+    docker compose -f docker-compose.prod.yml logs --tail=200 elasticsearch >&2 || true
+    exit 1
+  fi
+  sleep 2
+done
+
+if [ -f "$DEPLOY_PATH/mysql/migration/20260827-content-search-resource.sql" ]; then
+  echo "Applying resource metadata migration ..."
+  docker compose -f docker-compose.prod.yml exec -T mysql mysql \
+    -u"${MYSQL_USER}" -p"${MYSQL_PASSWORD}" "${MYSQL_DATABASE}" \
+    < "$DEPLOY_PATH/mysql/migration/20260827-content-search-resource.sql"
+fi
 
 echo "Waiting for http://127.0.0.1/api/health ..."
 for i in $(seq 1 30); do
