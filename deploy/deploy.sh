@@ -23,6 +23,25 @@ set -a
 . "$DEPLOY_PATH/.env"
 set +a
 
+required_vars=(
+  SWR_REGISTRY
+  SWR_NAMESPACE
+  MYSQL_DATABASE
+  MYSQL_USER
+  MYSQL_PASSWORD
+  MYSQL_ROOT_PASSWORD
+  REDIS_PASSWORD
+  RABBITMQ_DEFAULT_USER
+  RABBITMQ_DEFAULT_PASS
+  ELASTICSEARCH_PASSWORD
+)
+for required_var in "${required_vars[@]}"; do
+  if [ -z "${!required_var:-}" ] || [[ "${!required_var}" == replace-with-real-* ]]; then
+    echo "Missing required production setting: ${required_var} in $DEPLOY_PATH/.env" >&2
+    exit 1
+  fi
+done
+
 IMAGE_TAG="${1:-${IMAGE_TAG:-latest}}"
 export IMAGE_TAG
 export SWR_REGISTRY SWR_NAMESPACE IMAGE_TAG
