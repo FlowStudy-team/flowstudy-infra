@@ -33,7 +33,7 @@ jobs:
         if: inputs.action == 'prepare'
         shell: bash
         run: |
-          ssh "$ECS_USER@$ECS_HOST" "cd '$ECS_DEPLOY_PATH' && set -a && . ./.env && set +a && docker compose exec -T -e MYSQL_PWD=\"\$MYSQL_PASSWORD\" mysql mysql -N -u\"\$MYSQL_USER\" \"\$MYSQL_DATABASE\" -e \"INSERT INTO fs_membership_product(name,description,price_cents,token_amount,stock,sold_count,sale_start_at,sale_end_at,status,sort_order) VALUES ('ECS_SECKILL_TEST_'\"\$(date +%s)\"'','Isolated ECS performance fixture',990,1000,300,0,NOW()-INTERVAL 1 MINUTE,DATE_ADD(NOW(),INTERVAL 1 DAY),'ACTIVE',999); SELECT LAST_INSERT_ID();\""
+          ssh "$ECS_USER@$ECS_HOST" "cd '$ECS_DEPLOY_PATH' && set -a && . ./.env && set +a && docker compose --env-file .env -f docker-compose.prod.yml exec -T -e MYSQL_PWD=\"\$MYSQL_PASSWORD\" mysql mysql -N -u\"\$MYSQL_USER\" \"\$MYSQL_DATABASE\" -e \"INSERT INTO fs_membership_product(name,description,price_cents,token_amount,stock,sold_count,sale_start_at,sale_end_at,status,sort_order) VALUES ('ECS_SECKILL_TEST_'\"\$(date +%s)\"'','Isolated ECS performance fixture',990,1000,300,0,NOW()-INTERVAL 1 MINUTE,DATE_ADD(NOW(),INTERVAL 1 DAY),'ACTIVE',999); SELECT LAST_INSERT_ID();\""
 
       - name: Cleanup isolated product
         if: inputs.action == 'cleanup'
@@ -41,4 +41,4 @@ jobs:
         run: |
           test -n "${{ inputs.product_id }}"
           [[ "${{ inputs.product_id }}" =~ ^[0-9]+$ ]]
-          ssh "$ECS_USER@$ECS_HOST" "cd '$ECS_DEPLOY_PATH' && set -a && . ./.env && set +a && docker compose exec -T -e MYSQL_PWD=\"\$MYSQL_PASSWORD\" mysql mysql -N -u\"\$MYSQL_USER\" \"\$MYSQL_DATABASE\" -e \"DELETE FROM fs_membership_order WHERE product_id=${{ inputs.product_id }}; DELETE FROM fs_membership_product WHERE id=${{ inputs.product_id }};\""
+          ssh "$ECS_USER@$ECS_HOST" "cd '$ECS_DEPLOY_PATH' && set -a && . ./.env && set +a && docker compose --env-file .env -f docker-compose.prod.yml exec -T -e MYSQL_PWD=\"\$MYSQL_PASSWORD\" mysql mysql -N -u\"\$MYSQL_USER\" \"\$MYSQL_DATABASE\" -e \"DELETE FROM fs_membership_order WHERE product_id=${{ inputs.product_id }}; DELETE FROM fs_membership_product WHERE id=${{ inputs.product_id }};\""
